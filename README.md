@@ -70,15 +70,32 @@ Right-click on `index.html` and select **"Open with Live Server"**.
 
 ---
 
-## ⚙️ Google Sheets Integration Setup
+## ⚙️ Unified Google Spreadsheet Integration
 
-1. Open [Google Sheets](https://sheets.google.com) and create a new blank spreadsheet.
+This portal is attached to the central **CAIPSD Google Spreadsheet** that also powers the **CAIPSD Face Attendance System**:
+
+- **Shared Google Spreadsheet:** [View Spreadsheet](https://docs.google.com/spreadsheets/d/1o9Efz9w0-nt6JZABujOIgtmLQgWHxkj4reOVkGpWtqs/edit?usp=sharing)
+- **Spreadsheet ID:** `1o9Efz9w0-nt6JZABujOIgtmLQgWHxkj4reOVkGpWtqs`
+- **Unified Apps Script Backend:** `google-apps-script.js` (included in this repository)
+
+### 📊 Shared Spreadsheet Architecture:
+A single Google Spreadsheet seamlessly hosts both systems across distinct sheets/tabs without conflicts:
+1. **`Attendance`** &rarr; Real-time AI face attendance check-ins and logs (from CAIPSD Face Attendance).
+2. **`Registered Interns`** &rarr; Intern profiles, credentials, department details, and joined dates.
+3. **`Daily Reports`** &rarr; Daily intern work tasks, milestones, blockers, and admin reviews.
+4. **`Leave Requests`** &rarr; Intern leave applications, categories, dates, and approval statuses.
+5. **`Outing Notices`** &rarr; Gate pass records, expected/actual return timestamps, and exit approvals.
+
+### 🚀 How to Deploy the Unified Apps Script Backend:
+1. Open the [CAIPSD Google Spreadsheet](https://docs.google.com/spreadsheets/d/1o9Efz9w0-nt6JZABujOIgtmLQgWHxkj4reOVkGpWtqs/edit).
 2. In the top menu, go to **Extensions > Apps Script**.
-3. Copy the script code provided inside the Super Admin panel under **Google Spreadsheet Integration**.
-4. Paste the code into the Apps Script editor.
-5. Click **Deploy > New deployment**, select type **Web app**.
-6. Set *Who has access* to **"Anyone"** and click **Deploy**.
-7. Copy the generated Web App URL and paste it into the portal's configuration settings.
+3. Copy the contents of **`google-apps-script.js`** (or click **"📋 Copy Apps Script Code"** in the Super Admin dashboard) and paste it into the Apps Script editor.
+4. Click **Deploy > New deployment** (or **Manage deployments > Edit > New version** if updating).
+5. Select **Web app** as deployment type:
+   - **Execute as:** `Me`
+   - **Who has access:** `Anyone` (essential for web app sync)
+6. Click **Deploy** and copy your **Web app URL** (`https://script.google.com/macros/s/.../exec`).
+7. Paste this Web app URL into the **Super Admin > Google Spreadsheet Integration** panel and click **Save Configuration**.
 
 ---
 
@@ -87,6 +104,7 @@ Right-click on `index.html` and select **"Open with Live Server"**.
 ```text
 CAIPSD-PORTAL/
 ├── index.html            # Main Portal application (UI, logic, styles)
+├── google-apps-script.js # Unified backend script (Face Attendance + Portal sync)
 ├── manifest.webmanifest  # PWA web manifest file
 ├── sw.js                 # Service worker for offline & caching capabilities
 ├── icon-192.png          # App icon (192x192)

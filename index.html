@@ -1062,7 +1062,7 @@
         <button class="action-btn action-review" onclick="copyAppsScriptCode()">📋 Copy Apps Script Code</button>
       </div>
       <ol style="margin: 0 0 16px 20px; font-size: 0.84rem; color: #475569; line-height: 1.6;">
-        <li>Open <a href="https://sheets.google.com" target="_blank" style="color:var(--accent); font-weight:600;">Google Sheets</a> and create a new blank spreadsheet.</li>
+        <li>Open your connected <a href="https://docs.google.com/spreadsheets/d/1o9Efz9w0-nt6JZABujOIgtmLQgWHxkj4reOVkGpWtqs/edit" target="_blank" style="color:var(--accent); font-weight:600;">CAIPSD Google Spreadsheet</a> (linked with Attendance System).</li>
         <li>In the top menu, click <strong>Extensions &gt; Apps Script</strong>.</li>
         <li>Delete any existing code in the editor, click <strong>"Copy Apps Script Code"</strong> above, and paste it.</li>
         <li>Click <strong>Deploy &gt; New deployment</strong>, select type <strong>Web app</strong>, set <em>Who has access</em> to <strong>"Anyone"</strong> (crucial!), click <strong>Deploy</strong>, and authorize.</li>
@@ -1072,13 +1072,19 @@
         <summary style="cursor: pointer; font-weight: 600; color: var(--navy);">Click to inspect Google Apps Script code</summary>
         <pre id="appsScriptDisplay" style="background: #0f172a; color: #e2e8f0; padding: 14px; border-radius: 6px; overflow-x: auto; max-height: 260px; margin-top: 8px; font-family: monospace; font-size: 0.78rem;">/**
  * =========================================================================
- * CAIPSD Interns Portal - Google Apps Script Backend (v5.2)
+ * CAIPSD Unified Backend - Google Apps Script (v6.0)
  * The Islamia University of Bahawalpur · Centre of AI &amp; PSD
- * Sheet ID: 1kFYR1kjsvOSzmh9Gkz7S3yj_o70zhgKu5xMn0jqJoqo
+ * 
+ * UNIFIED SPREADSHEET LINK:
+ * https://docs.google.com/spreadsheets/d/1o9Efz9w0-nt6JZABujOIgtmLQgWHxkj4reOVkGpWtqs/edit
+ * 
+ * Supports BOTH:
+ * 1. CAIPSD Face Attendance System (Attendance check-ins &amp; Admin Portal)
+ * 2. CAIPSD Interns &amp; Super Admin Portal (Reports, Leaves, Outings, Roster)
  * =========================================================================
  */
 
-var SPREADSHEET_ID = &quot;1kFYR1kjsvOSzmh9Gkz7S3yj_o70zhgKu5xMn0jqJoqo&quot;;
+var SPREADSHEET_ID = &quot;1o9Efz9w0-nt6JZABujOIgtmLQgWHxkj4reOVkGpWtqs&quot;;
 
 function getTargetSpreadsheet() {
   try {
@@ -1171,6 +1177,15 @@ function doGet(e) {
 
   var action = (e &amp;&amp; e.parameter &amp;&amp; (e.parameter.action || e.parameter.act)) ? (e.parameter.action || e.parameter.act) : &quot;&quot;;
 
+  // 0. CAIPSD Face Attendance Data query
+  if (action === &quot;data&quot; || action === &quot;attendance_data&quot;) {
+    return respond(e, {
+      ok: true,
+      records: getAttendanceRecords(ss),
+      roster: []
+    });
+  }
+
   // 1. Return intern-specific data
   if (action === &quot;get_user_data&quot; || action === &quot;get_intern_data&quot;) {
     var name = (e.parameter.name || &quot;&quot;).trim().toLowerCase();
@@ -1257,6 +1272,36 @@ function doPost(e) {
   var payload = extractPayload(e);
   var action = payload.action || (e.parameter ? e.parameter.action : &quot;&quot;) || &quot;&quot;;
 
+  // 1. CAIPSD Face Attendance Check-in Record from app.js
+  if (payload.name &amp;&amp; !payload.type &amp;&amp; !payload.action) {
+    return executeWithLock(function() {
+      var sheet = getAttendanceSheet(ss);
+      var ts = payload.ts || new Date().getTime();
+      var date = payload.date || Utilities.formatDate(new Date(), &quot;GMT+5&quot;, &quot;yyyy-MM-dd&quot;);
+      var time = payload.time || Utilities.formatDate(new Date(), &quot;GMT+5&quot;, &quot;hh:mm:ss a&quot;);
+      var name = payload.name || &quot;&quot;;
+      var section = payload.section || &quot;&quot;;
+      var status = payload.status || &quot;Present&quot;;
+      var syncTime = Utilities.formatDate(new Date(), &quot;GMT+5&quot;, &quot;yyyy-MM-dd hh:mm:ss a&quot;);
+
+      sheet.appendRow([ts, date, time, name, section, status, syncTime]);
+      return respond(e, { result: &quot;ok&quot;, success: true, ok: true });
+    });
+  }
+
+  // 2. CAIPSD Face Attendance Admin Actions
+  if (action === &quot;login&quot; || action === &quot;logout&quot; || action === &quot;changePasscode&quot;) {
+    return handleAttendanceAdminAction(ss, payload);
+  }
+  if (action === &quot;data&quot;) {
+    return respond(e, {
+      ok: true,
+      records: getAttendanceRecords(ss),
+      roster: []
+    });
+  }
+
+  // 3. CAIPSD Interns Portal Actions
   return respond(e, executeWithLock(function() {
     if (action === &quot;update_status&quot; || action === &quot;update_submission&quot;) {
       return handleStatusUpdate(ss, payload);
@@ -1667,6 +1712,95 @@ function syncInternsSheet(ss, interns) {
   }
 }
 
+
+// ==================== ATTENDANCE SYSTEM INTEGRATION ====================
+function getAttendanceSheet(ss) {
+  var targetSs = ss || getTargetSpreadsheet();
+  var sheet = targetSs.getSheetByName(&quot;Attendance&quot;);
+  if (!sheet) {
+    sheet = targetSs.insertSheet(&quot;Attendance&quot;);
+    sheet.appendRow([
+      &quot;Timestamp&quot;,
+      &quot;Date&quot;,
+      &quot;Time&quot;,
+      &quot;Student Name&quot;,
+      &quot;Section / Dept&quot;,
+      &quot;Status&quot;,
+      &quot;Sync Time&quot;
+    ]);
+    sheet.getRange(1, 1, 1, 7)
+      .setFontWeight(&quot;bold&quot;)
+      .setBackground(&quot;#0B1F4B&quot;)
+      .setFontColor(&quot;#FFFFFF&quot;);
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
+
+function getAttendanceRecords(ss) {
+  var sheet = getAttendanceSheet(ss);
+  var rows = sheet.getDataRange().getValues();
+  var records = [];
+  for (var i = 1; i &lt; rows.length; i++) {
+    records.push({
+      ts: rows[i][0],
+      date: String(rows[i][1]),
+      time: String(rows[i][2]),
+      name: String(rows[i][3]),
+      section: String(rows[i][4]),
+      status: String(rows[i][5]),
+      receivedAt: rows[i][0]
+    });
+  }
+  return records;
+}
+
+function handleAttendanceAdminAction(ss, data) {
+  var props = PropertiesService.getScriptProperties();
+  var defaultPass = &quot;2375&quot;;
+  var adminPass = props.getProperty(&quot;ADMIN_PASSCODE&quot;) || defaultPass;
+
+  if (data.action === &quot;login&quot;) {
+    if (data.passcode === adminPass) {
+      var session = Utilities.getUuid();
+      props.setProperty(&quot;SESSION_&quot; + session, new Date().getTime().toString());
+      return ContentService.createTextOutput(JSON.stringify({
+        ok: true,
+        session: session
+      })).setMimeType(ContentService.MimeType.JSON);
+    } else {
+      return ContentService.createTextOutput(JSON.stringify({
+        ok: false,
+        error: &quot;Invalid admin passcode&quot;
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+  }
+
+  if (data.action === &quot;logout&quot;) {
+    if (data.session) {
+      props.deleteProperty(&quot;SESSION_&quot; + data.session);
+    }
+    return ContentService.createTextOutput(JSON.stringify({ ok: true }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  if (data.action === &quot;changePasscode&quot;) {
+    if (data.current === adminPass) {
+      props.setProperty(&quot;ADMIN_PASSCODE&quot;, data.next);
+      return ContentService.createTextOutput(JSON.stringify({ ok: true }))
+        .setMimeType(ContentService.MimeType.JSON);
+    } else {
+      return ContentService.createTextOutput(JSON.stringify({
+        ok: false,
+        error: &quot;Current passcode is incorrect&quot;
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+  }
+
+  return ContentService.createTextOutput(JSON.stringify({ ok: true }))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
 function initialSetup() {
   var ss = getTargetSpreadsheet() || SpreadsheetApp.openById(SPREADSHEET_ID);
   if (!ss) return &quot;Error: Sheet not found&quot;;
@@ -1739,7 +1873,7 @@ function initialSetup() {
 
   // Pre-configured Google Sheets Webhook and Spreadsheet URLs
   const DEFAULT_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbxQ0eS2JfTBeQkkR4T-rWMsE3xDM5XAN7ABNCAIYWBtscAtW8OEsXg0q9Rlf4RaMN5c/exec';
-  const DEFAULT_DOC_URL = 'https://docs.google.com/spreadsheets/d/1kFYR1kjsvOSzmh9Gkz7S3yj_o70zhgKu5xMn0jqJoqo/edit?usp=sharing';
+  const DEFAULT_DOC_URL = 'https://docs.google.com/spreadsheets/d/1o9Efz9w0-nt6JZABujOIgtmLQgWHxkj4reOVkGpWtqs/edit?usp=sharing';
 
   function getSheetWebhookUrl() {
     return (localStorage.getItem('caipsd_sheet_url') || DEFAULT_WEBHOOK_URL).trim();
@@ -2902,7 +3036,10 @@ function initialSetup() {
   // ==================== GOOGLE SHEETS CONFIG & FULL SYNC ====================
   window.loadSheetConfig = function () {
     const url = localStorage.getItem('caipsd_sheet_url') || DEFAULT_WEBHOOK_URL;
-    const docUrl = localStorage.getItem('caipsd_sheet_doc_url') || DEFAULT_DOC_URL;
+    let docUrl = localStorage.getItem('caipsd_sheet_doc_url') || DEFAULT_DOC_URL;
+    if (docUrl.indexOf('1kFYR1kjsvOSzmh9Gkz7S3yj_o70zhgKu5xMn0jqJoqo') !== -1) {
+      docUrl = DEFAULT_DOC_URL;
+    }
     localStorage.setItem('caipsd_sheet_url', url);
     localStorage.setItem('caipsd_sheet_doc_url', docUrl);
     if ($('cfgSheetWebhookUrl')) $('cfgSheetWebhookUrl').value = url;
