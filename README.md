@@ -77,6 +77,7 @@ This portal is attached to the central **CAIPSD Google Spreadsheet** that also p
 - **Shared Google Spreadsheet:** [View Spreadsheet](https://docs.google.com/spreadsheets/d/1o9Efz9w0-nt6JZABujOIgtmLQgWHxkj4reOVkGpWtqs/edit?usp=sharing)
 - **Spreadsheet ID:** `1o9Efz9w0-nt6JZABujOIgtmLQgWHxkj4reOVkGpWtqs`
 - **Unified Apps Script Backend:** `google-apps-script.js` (included in this repository)
+- **Live Deployed Webhook URL:** `https://script.google.com/macros/s/AKfycbxT6vgdzw0NB7jsp6UnMKNaFK1g5uDOqtZp9NgzlBp9aczDhQ6iNW158AHzx6MHHKu9/exec`
 
 ### 📊 Shared Spreadsheet Architecture:
 A single Google Spreadsheet seamlessly hosts both systems across distinct sheets/tabs without conflicts:

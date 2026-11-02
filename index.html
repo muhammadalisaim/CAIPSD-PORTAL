@@ -1872,11 +1872,16 @@ function initialSetup() {
   let currentUser = JSON.parse(localStorage.getItem('caipsd_current_user') || 'null');
 
   // Pre-configured Google Sheets Webhook and Spreadsheet URLs
-  const DEFAULT_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbxQ0eS2JfTBeQkkR4T-rWMsE3xDM5XAN7ABNCAIYWBtscAtW8OEsXg0q9Rlf4RaMN5c/exec';
+  const DEFAULT_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbxT6vgdzw0NB7jsp6UnMKNaFK1g5uDOqtZp9NgzlBp9aczDhQ6iNW158AHzx6MHHKu9/exec';
   const DEFAULT_DOC_URL = 'https://docs.google.com/spreadsheets/d/1o9Efz9w0-nt6JZABujOIgtmLQgWHxkj4reOVkGpWtqs/edit?usp=sharing';
 
   function getSheetWebhookUrl() {
-    return (localStorage.getItem('caipsd_sheet_url') || DEFAULT_WEBHOOK_URL).trim();
+    let u = (localStorage.getItem('caipsd_sheet_url') || DEFAULT_WEBHOOK_URL).trim();
+    if (u.indexOf('AKfycbxQ0eS2JfTBeQkkR4T-rWMsE3xDM5XAN7ABNCAIYWBtscAtW8OEsXg0q9Rlf4RaMN5c') !== -1) {
+      u = DEFAULT_WEBHOOK_URL;
+      localStorage.setItem('caipsd_sheet_url', u);
+    }
+    return u;
   }
 
   // ==================== DUAL FETCH & JSONP ENGINE ====================
@@ -3035,7 +3040,10 @@ function initialSetup() {
 
   // ==================== GOOGLE SHEETS CONFIG & FULL SYNC ====================
   window.loadSheetConfig = function () {
-    const url = localStorage.getItem('caipsd_sheet_url') || DEFAULT_WEBHOOK_URL;
+    let url = localStorage.getItem('caipsd_sheet_url') || DEFAULT_WEBHOOK_URL;
+    if (url.indexOf('AKfycbxQ0eS2JfTBeQkkR4T-rWMsE3xDM5XAN7ABNCAIYWBtscAtW8OEsXg0q9Rlf4RaMN5c') !== -1) {
+      url = DEFAULT_WEBHOOK_URL;
+    }
     let docUrl = localStorage.getItem('caipsd_sheet_doc_url') || DEFAULT_DOC_URL;
     if (docUrl.indexOf('1kFYR1kjsvOSzmh9Gkz7S3yj_o70zhgKu5xMn0jqJoqo') !== -1) {
       docUrl = DEFAULT_DOC_URL;
